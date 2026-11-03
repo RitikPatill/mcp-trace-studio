@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.pyc
+*.pyo
+*.pyd
+.python-version
+
+# uv
+uv.lock
+.uv/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+.vercel
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Local env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
