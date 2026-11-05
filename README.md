@@ -23,9 +23,9 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M1)
+## What works now (M2)
 
-The monorepo scaffold is in place and both services start cleanly.
+The monorepo scaffold and the MCP proxy core are in place.
 
 | Component | State |
 |-----------|-------|
@@ -35,8 +35,27 @@ The monorepo scaffold is in place and both services start cleanly.
 | `justfile` — `backend`, `frontend`, `dev`, `test`, `lint` recipes | working |
 | Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
 | MIT LICENSE, `.gitignore` | present |
+| **`backend/app/proxy/`** — transparent MCP stdio proxy (`MCPProxy`) | **done** |
+| **`backend/servers.yaml`** — upstream server registry | **done** |
+| **`backend/tests/test_proxy.py`** — 3 unit + 2 async integration tests (asyncio) | **passing** |
 
-The proxy, trace ingestion, REST/WebSocket API, and all UI features listed above are **not yet implemented** — see the roadmap below.
+Trace ingestion into SQLite, REST/WebSocket API, and all UI features are **not yet implemented** — see the roadmap below.
+
+### Using the proxy
+
+Point your MCP client at the proxy instead of a real server:
+
+```bash
+# Forward all traffic to the 'filesystem' server defined in servers.yaml
+cd backend
+uv run python -m app.proxy filesystem
+```
+
+Every JSON-RPC frame is logged as a JSON-lines record to stderr, tagged with a `run_id` correlation ID:
+
+```json
+{"ts": "2026-11-05T10:00:00Z", "run_id": "...", "direction": "client→upstream", "method": "tools/list", "msg_id": 1}
+```
 
 ---
 
@@ -105,7 +124,7 @@ Starts Next.js dev server on <http://localhost:3000>.
 2. Confirm the backend is healthy: <http://localhost:8000/health>.
 3. Open <http://localhost:3000>.
 
-<!-- TODO: update steps 2–4 once M2 ships the proxy (port 7878) and trace ingestion. -->
+<!-- TODO: extend demo flow once M3 ships trace ingestion and the WebSocket API. -->
 
 ---
 
@@ -145,7 +164,7 @@ cd frontend && pnpm prettier --write .
 | Milestone | Status |
 |-----------|--------|
 | M1 — scaffold + readme | done |
-| M2 — MCP proxy + SQLite schema | next |
+| M2 — MCP proxy core (stdio, frame logging, pytest suite) | done |
 | M3 — REST + WebSocket API | |
 | M4 — Dashboard UI | |
 | M5 — Replay + Diff | |

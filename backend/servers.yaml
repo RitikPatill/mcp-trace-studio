@@ -1,0 +1,10 @@
+servers:
+  filesystem:
+    command: uvx
+    args: ["mcp-server-filesystem", "/tmp"]
+    env: {}
+
+  fake:
+    command: python
+    args: ["tests/fixtures/fake_server.py"]
+    env: {}
