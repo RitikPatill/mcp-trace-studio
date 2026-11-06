@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import Optional
 
 import anyio
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
@@ -16,9 +18,17 @@ from .frames import log_frame
 
 
 class MCPProxy:
-    def __init__(self, server_cfg: ServerConfig, run_id: str | None = None) -> None:
+    def __init__(
+        self,
+        server_cfg: ServerConfig,
+        run_id: str | None = None,
+        on_frame: Optional[
+            Callable[[str, str, JSONRPCMessage], Awaitable[None]]
+        ] = None,
+    ) -> None:
         self.server_cfg = server_cfg
         self.run_id = run_id or str(uuid.uuid4())
+        self._on_frame = on_frame
 
     async def run_stdio(self) -> None:
         """Connect to upstream via stdio_client, bridge inbound stdio ↔ upstream."""
@@ -75,6 +85,8 @@ class MCPProxy:
                         # Parse error — skip frame, do not crash
                         continue
                     log_frame(self.run_id, direction, item.message)
+                    if self._on_frame:
+                        await self._on_frame(self.run_id, direction, item.message)
                     try:
                         await dst.send(item)
                     except (anyio.ClosedResourceError, anyio.BrokenResourceError):
