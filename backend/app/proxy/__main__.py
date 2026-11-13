@@ -3,11 +3,16 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime, timezone
 
 import anyio
 
+from ..database import get_engine, init_db
+from ..models import Run  # noqa: F401 — registers table metadata
+from ..store import FrameRecorder, close_run, create_run
 from .config import load_servers
 from .core import MCPProxy
+from sqlmodel import Session
 
 
 def main() -> None:
@@ -36,8 +41,34 @@ def main() -> None:
         )
         sys.exit(1)
 
-    proxy = MCPProxy(server_cfg=servers[args.server])
-    anyio.run(proxy.run_stdio)
+    server_cfg = servers[args.server]
+
+    # Ensure tables exist
+    init_db()
+
+    engine = get_engine()
+
+    # Create a run row
+    with Session(engine) as session:
+        run = create_run(session, server_name=args.server)
+        run_id = run.id
+
+    recorder = FrameRecorder(run_id=run_id, engine=engine)
+
+    async def _run() -> None:
+        proxy = MCPProxy(
+            server_cfg=server_cfg,
+            run_id=run_id,
+            on_frame=recorder.on_frame,
+        )
+        try:
+            await proxy.run_stdio()
+        finally:
+            ended_at = datetime.now(timezone.utc)
+            with Session(engine) as session:
+                close_run(session, run_id, ended_at)
+
+    anyio.run(_run)
 
 
 if __name__ == "__main__":

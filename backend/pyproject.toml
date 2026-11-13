@@ -18,7 +18,7 @@ dev = [
     "pytest>=8.3",
     "httpx>=0.28",
     "anyio[trio]>=4.6",
-    "pytest-anyio>=0.0.0",
+    "websockets>=13.0",
 ]
 
 [tool.ruff]

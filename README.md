@@ -23,23 +23,26 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M2)
+## What works now (M3)
 
-The monorepo scaffold and the MCP proxy core are in place.
+Trace storage, ingestion, and REST/WebSocket API are live.
 
 | Component | State |
 |-----------|-------|
 | `backend/` — FastAPI app, `/health` endpoint, pydantic-settings | running |
-| `backend/tests/` — smoke test for health check (`pytest`) | passing |
+| `backend/tests/` — 16 tests (health, proxy, store, API) | passing |
 | `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui initialized | dev server starts |
 | `justfile` — `backend`, `frontend`, `dev`, `test`, `lint` recipes | working |
 | Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
 | MIT LICENSE, `.gitignore` | present |
 | **`backend/app/proxy/`** — transparent MCP stdio proxy (`MCPProxy`) | **done** |
 | **`backend/servers.yaml`** — upstream server registry | **done** |
-| **`backend/tests/test_proxy.py`** — 3 unit + 2 async integration tests (asyncio) | **passing** |
+| **`backend/app/models.py`** — SQLModel tables: `Run`, `Span`, `ToolCall` | **done** |
+| **`backend/app/database.py`** — SQLite engine (WAL mode), `init_db`, `get_session` | **done** |
+| **`backend/app/store.py`** — store helpers + `FrameRecorder` (request/response correlation) | **done** |
+| **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `WS /ws/runs/{id}` | **done** |
 
-Trace ingestion into SQLite, REST/WebSocket API, and all UI features are **not yet implemented** — see the roadmap below.
+The dashboard UI, replay, and diff are **not yet implemented** — see the roadmap below.
 
 ### Using the proxy
 
@@ -51,10 +54,20 @@ cd backend
 uv run python -m app.proxy filesystem
 ```
 
-Every JSON-RPC frame is logged as a JSON-lines record to stderr, tagged with a `run_id` correlation ID:
+Every JSON-RPC frame is logged as a JSON-lines record to stderr **and written to SQLite** as a structured span. `tools/call` frames are correlated with their responses to produce timed `ToolCall` rows.
 
-```json
-{"ts": "2026-11-05T10:00:00Z", "run_id": "...", "direction": "client→upstream", "method": "tools/list", "msg_id": 1}
+### REST API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /runs` | List all runs, most recent first |
+| `GET /runs/{id}` | Get a single run (404 if not found) |
+| `GET /runs/{id}/spans` | All spans for a run, with nested tool calls |
+| `WS /ws/runs/{id}` | Live stream of new spans (polls every 500 ms) |
+
+```bash
+curl http://localhost:8000/runs
+curl http://localhost:8000/runs/<run-id>/spans
 ```
 
 ---
@@ -124,7 +137,7 @@ Starts Next.js dev server on <http://localhost:3000>.
 2. Confirm the backend is healthy: <http://localhost:8000/health>.
 3. Open <http://localhost:3000>.
 
-<!-- TODO: extend demo flow once M3 ships trace ingestion and the WebSocket API. -->
+<!-- TODO: extend demo flow once M4 ships the dashboard UI. -->
 
 ---
 
@@ -165,7 +178,7 @@ cd frontend && pnpm prettier --write .
 |-----------|--------|
 | M1 — scaffold + readme | done |
 | M2 — MCP proxy core (stdio, frame logging, pytest suite) | done |
-| M3 — REST + WebSocket API | |
+| M3 — trace storage + REST/WebSocket API | done |
 | M4 — Dashboard UI | |
 | M5 — Replay + Diff | |
 
