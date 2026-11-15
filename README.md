@@ -23,15 +23,15 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M3)
+## What works now (M4)
 
-Trace storage, ingestion, and REST/WebSocket API are live.
+Dashboard shell is live. The runs list page renders with live polling, dark/light theme, and a persistent sidebar.
 
 | Component | State |
 |-----------|-------|
 | `backend/` — FastAPI app, `/health` endpoint, pydantic-settings | running |
-| `backend/tests/` — 16 tests (health, proxy, store, API) | passing |
-| `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui initialized | dev server starts |
+| `backend/tests/` — 7 API tests (health, proxy, store, API + tool_call_count) | passing |
+| `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui (badge, button, card, separator, skeleton) | dev server starts |
 | `justfile` — `backend`, `frontend`, `dev`, `test`, `lint` recipes | working |
 | Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
 | MIT LICENSE, `.gitignore` | present |
@@ -39,10 +39,17 @@ Trace storage, ingestion, and REST/WebSocket API are live.
 | **`backend/servers.yaml`** — upstream server registry | **done** |
 | **`backend/app/models.py`** — SQLModel tables: `Run`, `Span`, `ToolCall` | **done** |
 | **`backend/app/database.py`** — SQLite engine (WAL mode), `init_db`, `get_session` | **done** |
-| **`backend/app/store.py`** — store helpers + `FrameRecorder` (request/response correlation) | **done** |
-| **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `WS /ws/runs/{id}` | **done** |
+| **`backend/app/store.py`** — store helpers + `FrameRecorder` + `count_tool_calls_for_run` | **done** |
+| **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `WS /ws/runs/{id}` (all return `tool_call_count`) | **done** |
+| **`frontend/src/app/runs/page.tsx`** — runs list with status badge, duration, tool count, server chip | **done** |
+| **`frontend/src/app/analytics/page.tsx`** — Analytics route stub (placeholder for M5+) | **done** |
+| **`frontend/src/app/settings/page.tsx`** — Settings route stub (placeholder for M5+) | **done** |
+| **`frontend/src/components/layout/Sidebar.tsx`** — persistent sidebar: Runs / Analytics / Settings | **done** |
+| **`frontend/src/components/layout/ThemeToggle.tsx`** — dark/light toggle (next-themes) | **done** |
+| **`frontend/src/app/providers.tsx`** — TanStack Query + ThemeProvider wrapper | **done** |
+| **`frontend/src/lib/api.ts`** — typed fetch client for the backend | **done** |
 
-The dashboard UI, replay, and diff are **not yet implemented** — see the roadmap below.
+Replay and diff are **not yet implemented** — see the roadmap below.
 
 ### Using the proxy
 
@@ -135,9 +142,10 @@ Starts Next.js dev server on <http://localhost:3000>.
 
 1. `just backend` + `just frontend` in two terminals.
 2. Confirm the backend is healthy: <http://localhost:8000/health>.
-3. Open <http://localhost:3000>.
-
-<!-- TODO: extend demo flow once M4 ships the dashboard UI. -->
+3. Open <http://localhost:3000> — you are redirected to the **Runs** page.
+4. Run the proxy against an MCP server; runs appear live (5-second poll).
+5. Click a run row to inspect spans (detail page coming in M5).
+6. Toggle dark/light theme with the button at the bottom of the sidebar.
 
 ---
 
@@ -179,7 +187,7 @@ cd frontend && pnpm prettier --write .
 | M1 — scaffold + readme | done |
 | M2 — MCP proxy core (stdio, frame logging, pytest suite) | done |
 | M3 — trace storage + REST/WebSocket API | done |
-| M4 — Dashboard UI | |
+| M4 — Dashboard UI | done |
 | M5 — Replay + Diff | |
 
 ---

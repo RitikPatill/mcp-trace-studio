@@ -12,7 +12,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from app import models  # noqa: F401 — registers table metadata
 from app.database import get_session
 from app.main import app
-from app.models import Run, Span
+from app.models import Run, Span, ToolCall
 from app.store import create_run
 
 
@@ -61,6 +61,29 @@ def test_list_runs_returns_created(client, override_db):
     runs = r.json()
     assert len(runs) == 1
     assert runs[0]["server_name"] == "fs"
+    assert "tool_call_count" in runs[0]
+    assert isinstance(runs[0]["tool_call_count"], int)
+
+
+def test_list_runs_tool_call_count(client, override_db):
+    with Session(override_db) as session:
+        run = create_run(session, server_name="fs")
+        for i in range(3):
+            tc = ToolCall(
+                id=str(uuid.uuid4()),
+                span_id=str(uuid.uuid4()),
+                run_id=run.id,
+                tool_name="read_file",
+                args_json="{}",
+                started_at=datetime.now(timezone.utc),
+            )
+            session.add(tc)
+        session.commit()
+
+    r = client.get("/runs")
+    assert r.status_code == 200
+    runs = r.json()
+    assert runs[0]["tool_call_count"] == 3
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +103,10 @@ def test_get_run(client, override_db):
 
     r = client.get(f"/runs/{run_id}")
     assert r.status_code == 200
-    assert r.json()["id"] == run_id
+    data = r.json()
+    assert data["id"] == run_id
+    assert "tool_call_count" in data
+    assert isinstance(data["tool_call_count"], int)
 
 
 # ---------------------------------------------------------------------------

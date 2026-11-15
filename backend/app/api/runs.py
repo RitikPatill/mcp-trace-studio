@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from ..database import get_session
-from ..store import get_run, get_spans, get_spans_after, get_tool_calls_for_spans
+from ..store import count_tool_calls_for_run, get_run, get_spans, get_spans_after, get_tool_calls_for_spans
 from ..store import list_runs as store_list_runs
 from ..models import Span
 
@@ -54,6 +54,7 @@ class RunRead(BaseModel):
     ended_at: Optional[datetime]
     server_name: str
     model_name: Optional[str]
+    tool_call_count: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +113,7 @@ def list_runs(session: Session = Depends(get_session)) -> list[RunRead]:
             ended_at=r.ended_at,
             server_name=r.server_name,
             model_name=r.model_name,
+            tool_call_count=count_tool_calls_for_run(session, r.id),
         )
         for r in runs
     ]
@@ -131,6 +133,7 @@ def get_run_endpoint(
         ended_at=run.ended_at,
         server_name=run.server_name,
         model_name=run.model_name,
+        tool_call_count=count_tool_calls_for_run(session, run.id),
     )
 
 
