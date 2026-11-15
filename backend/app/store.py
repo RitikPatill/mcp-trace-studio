@@ -7,7 +7,7 @@ from typing import Any, Awaitable, Callable
 
 import anyio
 from sqlalchemy import Engine
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from .models import Run, Span, ToolCall
 
@@ -50,6 +50,13 @@ def list_runs(session: Session) -> list[Run]:
 
 def get_run(session: Session, run_id: str) -> Run | None:
     return session.get(Run, run_id)
+
+
+def count_tool_calls_for_run(session: Session, run_id: str) -> int:
+    """Return total ToolCall rows for a run via a single COUNT query."""
+    return session.exec(
+        select(func.count(ToolCall.id)).where(ToolCall.run_id == run_id)
+    ).one()
 
 
 def get_spans(session: Session, run_id: str) -> list[Span]:
