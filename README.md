@@ -23,9 +23,9 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M4)
+## What works now (M5)
 
-Dashboard shell is live. The runs list page renders with live polling, dark/light theme, and a persistent sidebar.
+Waterfall timeline view is live. Click any run to open the detail page with a zoomable horizontal timeline, span selection, JSON tree panel, copy helpers, and live WebSocket streaming.
 
 | Component | State |
 |-----------|-------|
@@ -42,12 +42,19 @@ Dashboard shell is live. The runs list page renders with live polling, dark/ligh
 | **`backend/app/store.py`** — store helpers + `FrameRecorder` + `count_tool_calls_for_run` | **done** |
 | **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `WS /ws/runs/{id}` (all return `tool_call_count`) | **done** |
 | **`frontend/src/app/runs/page.tsx`** — runs list with status badge, duration, tool count, server chip | **done** |
-| **`frontend/src/app/analytics/page.tsx`** — Analytics route stub (placeholder for M5+) | **done** |
-| **`frontend/src/app/settings/page.tsx`** — Settings route stub (placeholder for M5+) | **done** |
-| **`frontend/src/components/layout/Sidebar.tsx`** — persistent sidebar: Runs / Analytics / Settings | **done** |
-| **`frontend/src/components/layout/ThemeToggle.tsx`** — dark/light toggle (next-themes) | **done** |
-| **`frontend/src/app/providers.tsx`** — TanStack Query + ThemeProvider wrapper | **done** |
-| **`frontend/src/lib/api.ts`** — typed fetch client for the backend | **done** |
+| **`frontend/src/app/runs/[id]/page.tsx`** — run detail page: header, waterfall, side panel | **done** |
+| **`frontend/src/hooks/useRunWebSocket.ts`** — WebSocket hook; streams new spans live | **done** |
+| **`frontend/src/components/timeline/WaterfallTimeline.tsx`** — zoomable waterfall (ctrl+wheel or ±), time ruler, in-flight pulsing bars | **done** |
+| **`frontend/src/components/timeline/SpanDetailPanel.tsx`** — span metadata, JSON trees, copy-as-cURL, copy-as-MCP-call | **done** |
+| **`frontend/src/components/timeline/LatencySparkline.tsx`** — SVG bar sparkline with highlighted current span | **done** |
+| **`frontend/src/components/timeline/JsonDisplay.tsx`** — syntax-highlighted collapsible JSON (react-syntax-highlighter) | **done** |
+| **`frontend/src/lib/utils.ts`** — `djb2`, `serverColor`, `serverBarColor` helpers | **done** |
+| **`frontend/src/app/analytics/page.tsx`** — Analytics route stub | **done** |
+| **`frontend/src/app/settings/page.tsx`** — Settings route stub | **done** |
+| **`frontend/src/components/layout/Sidebar.tsx`** — persistent sidebar | **done** |
+| **`frontend/src/components/layout/ThemeToggle.tsx`** — dark/light toggle | **done** |
+| **`frontend/src/app/providers.tsx`** — TanStack Query + ThemeProvider | **done** |
+| **`frontend/src/lib/api.ts`** — typed fetch client (`SpanRead`, `ToolCallRead`, `getRunSpans`) | **done** |
 
 Replay and diff are **not yet implemented** — see the roadmap below.
 
@@ -144,7 +151,7 @@ Starts Next.js dev server on <http://localhost:3000>.
 2. Confirm the backend is healthy: <http://localhost:8000/health>.
 3. Open <http://localhost:3000> — you are redirected to the **Runs** page.
 4. Run the proxy against an MCP server; runs appear live (5-second poll).
-5. Click a run row to inspect spans (detail page coming in M5).
+5. Click a run row to open the waterfall timeline; click any span bar to inspect args/result JSON.
 6. Toggle dark/light theme with the button at the bottom of the sidebar.
 
 ---
@@ -188,7 +195,8 @@ cd frontend && pnpm prettier --write .
 | M2 — MCP proxy core (stdio, frame logging, pytest suite) | done |
 | M3 — trace storage + REST/WebSocket API | done |
 | M4 — Dashboard UI | done |
-| M5 — Replay + Diff | |
+| M5 — trace timeline UI | done |
+| M6 — Replay + Diff | |
 
 ---
 

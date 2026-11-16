@@ -5,31 +5,12 @@ import Link from "next/link";
 import { listRuns, type RunSummary } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { serverColor } from "@/lib/utils";
 
 function formatDuration(a: string, b: string): string {
   const ms = new Date(b).getTime() - new Date(a).getTime();
   if (ms < 1000) return `${ms} ms`;
   return `${(ms / 1000).toFixed(1)} s`;
-}
-
-function djb2(str: string): number {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 33) ^ str.charCodeAt(i);
-  }
-  return hash >>> 0;
-}
-
-const SERVER_COLORS = [
-  "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-];
-
-function serverColor(name: string): string {
-  return SERVER_COLORS[djb2(name) % SERVER_COLORS.length];
 }
 
 function RunRow({ run }: { run: RunSummary }) {
