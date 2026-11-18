@@ -21,12 +21,14 @@ def create_run(
     session: Session,
     server_name: str,
     model_name: str | None = None,
+    parent_run_id: str | None = None,
 ) -> Run:
     run = Run(
         id=str(uuid.uuid4()),
         started_at=datetime.now(timezone.utc),
         server_name=server_name,
         model_name=model_name,
+        parent_run_id=parent_run_id,
     )
     session.add(run)
     session.commit()
@@ -79,6 +81,15 @@ def get_tool_calls_for_spans(
     if not span_ids:
         return []
     stmt = select(ToolCall).where(ToolCall.span_id.in_(span_ids))  # type: ignore[attr-defined]
+    return list(session.exec(stmt).all())
+
+
+def get_tool_calls_for_run(session: Session, run_id: str) -> list[ToolCall]:
+    stmt = (
+        select(ToolCall)
+        .where(ToolCall.run_id == run_id)
+        .order_by(ToolCall.started_at)  # type: ignore[arg-type]
+    )
     return list(session.exec(stmt).all())
 
 
