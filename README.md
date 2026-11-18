@@ -23,40 +23,39 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M5)
+## What works now (M6)
 
-Waterfall timeline view is live. Click any run to open the detail page with a zoomable horizontal timeline, span selection, JSON tree panel, copy helpers, and live WebSocket streaming.
+Replay and diff are live. Click **Replay** on any run detail page to re-execute its tool calls against a chosen server and watch the new run fill in live. Click **Diff** to pick a second run and view a side-by-side table of tool calls, with expandable JSON line diffs and latency-delta badges.
 
 | Component | State |
 |-----------|-------|
 | `backend/` — FastAPI app, `/health` endpoint, pydantic-settings | running |
-| `backend/tests/` — 7 API tests (health, proxy, store, API + tool_call_count) | passing |
-| `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui (badge, button, card, separator, skeleton) | dev server starts |
+| `backend/tests/` — API tests (health, proxy, store, API, replay, diff) | passing |
+| `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui (badge, button, card, separator, skeleton, dialog) | dev server starts |
 | `justfile` — `backend`, `frontend`, `dev`, `test`, `lint` recipes | working |
 | Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
 | MIT LICENSE, `.gitignore` | present |
 | **`backend/app/proxy/`** — transparent MCP stdio proxy (`MCPProxy`) | **done** |
 | **`backend/servers.yaml`** — upstream server registry | **done** |
-| **`backend/app/models.py`** — SQLModel tables: `Run`, `Span`, `ToolCall` | **done** |
+| **`backend/app/models.py`** — SQLModel tables: `Run` (with `parent_run_id`), `Span`, `ToolCall` | **done** |
 | **`backend/app/database.py`** — SQLite engine (WAL mode), `init_db`, `get_session` | **done** |
-| **`backend/app/store.py`** — store helpers + `FrameRecorder` + `count_tool_calls_for_run` | **done** |
-| **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `WS /ws/runs/{id}` (all return `tool_call_count`) | **done** |
+| **`backend/app/store.py`** — store helpers + `FrameRecorder` + `get_tool_calls_for_run` | **done** |
+| **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `POST /runs/{id}/replay`, `GET /runs/{a}/diff/{b}`, `WS /ws/runs/{id}` | **done** |
+| **`backend/app/api/replay.py`** — `execute_replay` background task (MCP stdio client, records spans + tool calls) | **done** |
 | **`frontend/src/app/runs/page.tsx`** — runs list with status badge, duration, tool count, server chip | **done** |
-| **`frontend/src/app/runs/[id]/page.tsx`** — run detail page: header, waterfall, side panel | **done** |
+| **`frontend/src/app/runs/[id]/page.tsx`** — run detail page: header with Replay/Diff buttons, waterfall, side panel | **done** |
+| **`frontend/src/app/runs/[id]/diff/[compareId]/page.tsx`** — diff page: two RunCards + DiffTable | **done** |
 | **`frontend/src/hooks/useRunWebSocket.ts`** — WebSocket hook; streams new spans live | **done** |
-| **`frontend/src/components/timeline/WaterfallTimeline.tsx`** — zoomable waterfall (ctrl+wheel or ±), time ruler, in-flight pulsing bars | **done** |
-| **`frontend/src/components/timeline/SpanDetailPanel.tsx`** — span metadata, JSON trees, copy-as-cURL, copy-as-MCP-call | **done** |
-| **`frontend/src/components/timeline/LatencySparkline.tsx`** — SVG bar sparkline with highlighted current span | **done** |
-| **`frontend/src/components/timeline/JsonDisplay.tsx`** — syntax-highlighted collapsible JSON (react-syntax-highlighter) | **done** |
+| **`frontend/src/components/timeline/WaterfallTimeline.tsx`** — zoomable waterfall | **done** |
+| **`frontend/src/components/timeline/SpanDetailPanel.tsx`** — span metadata, JSON trees | **done** |
+| **`frontend/src/components/timeline/LatencySparkline.tsx`** — SVG bar sparkline | **done** |
+| **`frontend/src/components/timeline/JsonDisplay.tsx`** — syntax-highlighted collapsible JSON | **done** |
+| **`frontend/src/components/replay/ReplayDialog.tsx`** — modal to pick server + model, fires replay | **done** |
+| **`frontend/src/components/replay/DiffRunPickerDialog.tsx`** — modal run list picker for diff | **done** |
+| **`frontend/src/components/diff/DiffTable.tsx`** — aligned tool call table with expand-to-diff | **done** |
+| **`frontend/src/components/diff/JsonLineDiff.tsx`** — line-by-line JSON diff (green/red) using `diff` package | **done** |
 | **`frontend/src/lib/utils.ts`** — `djb2`, `serverColor`, `serverBarColor` helpers | **done** |
-| **`frontend/src/app/analytics/page.tsx`** — Analytics route stub | **done** |
-| **`frontend/src/app/settings/page.tsx`** — Settings route stub | **done** |
-| **`frontend/src/components/layout/Sidebar.tsx`** — persistent sidebar | **done** |
-| **`frontend/src/components/layout/ThemeToggle.tsx`** — dark/light toggle | **done** |
-| **`frontend/src/app/providers.tsx`** — TanStack Query + ThemeProvider | **done** |
-| **`frontend/src/lib/api.ts`** — typed fetch client (`SpanRead`, `ToolCallRead`, `getRunSpans`) | **done** |
-
-Replay and diff are **not yet implemented** — see the roadmap below.
+| **`frontend/src/lib/api.ts`** — typed fetch client (`replayRun`, `getDiff`, etc.) | **done** |
 
 ### Using the proxy
 
@@ -77,12 +76,24 @@ Every JSON-RPC frame is logged as a JSON-lines record to stderr **and written to
 | `GET /runs` | List all runs, most recent first |
 | `GET /runs/{id}` | Get a single run (404 if not found) |
 | `GET /runs/{id}/spans` | All spans for a run, with nested tool calls |
+| `POST /runs/{id}/replay` | Re-execute captured tool calls; returns new run (202) |
+| `GET /runs/{a}/diff/{b}` | Align tool calls across two runs, return diff entries |
 | `WS /ws/runs/{id}` | Live stream of new spans (polls every 500 ms) |
 
 ```bash
 curl http://localhost:8000/runs
 curl http://localhost:8000/runs/<run-id>/spans
+curl -X POST http://localhost:8000/runs/<run-id>/replay \
+     -H 'Content-Type: application/json' \
+     -d '{"server_name": "filesystem"}'
+curl http://localhost:8000/runs/<run-a>/diff/<run-b>
 ```
+
+> **SQLite migration note:** `parent_run_id` is a new nullable column on `Run`. If you have an existing `traces.db` from M5 or earlier, run:
+> ```bash
+> sqlite3 backend/traces.db "ALTER TABLE run ADD COLUMN parent_run_id TEXT;"
+> ```
+> Or delete `traces.db` for a clean start. Tests use in-memory DBs and are unaffected.
 
 ---
 
@@ -152,7 +163,9 @@ Starts Next.js dev server on <http://localhost:3000>.
 3. Open <http://localhost:3000> — you are redirected to the **Runs** page.
 4. Run the proxy against an MCP server; runs appear live (5-second poll).
 5. Click a run row to open the waterfall timeline; click any span bar to inspect args/result JSON.
-6. Toggle dark/light theme with the button at the bottom of the sidebar.
+6. On the run detail page, click **Replay** to pick a server and model, then watch the new run fill in live via WebSocket.
+7. Click **Diff** on either run, pick a second run to compare, and view the aligned tool-call table with JSON line diffs and latency-delta badges.
+8. Toggle dark/light theme with the button at the bottom of the sidebar.
 
 ---
 
@@ -196,7 +209,7 @@ cd frontend && pnpm prettier --write .
 | M3 — trace storage + REST/WebSocket API | done |
 | M4 — Dashboard UI | done |
 | M5 — trace timeline UI | done |
-| M6 — Replay + Diff | |
+| M6 — Replay + Diff | done |
 
 ---
 

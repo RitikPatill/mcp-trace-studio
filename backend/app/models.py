@@ -12,6 +12,7 @@ class Run(SQLModel, table=True):
     ended_at: Optional[datetime] = Field(default=None)
     server_name: str
     model_name: Optional[str] = Field(default=None)
+    parent_run_id: Optional[str] = Field(default=None, index=True)
 
 
 class Span(SQLModel, table=True):

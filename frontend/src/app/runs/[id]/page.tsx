@@ -3,6 +3,7 @@
 import { use, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getRun, getRunSpans, type SpanRead } from "@/lib/api";
 import { serverColor } from "@/lib/utils";
@@ -10,7 +11,10 @@ import { useRunWebSocket } from "@/hooks/useRunWebSocket";
 import { WaterfallTimeline } from "@/components/timeline/WaterfallTimeline";
 import { SpanDetailPanel } from "@/components/timeline/SpanDetailPanel";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ReplayDialog } from "@/components/replay/ReplayDialog";
+import { DiffRunPickerDialog } from "@/components/replay/DiffRunPickerDialog";
 
 function formatDuration(a: string, b: string): string {
   const ms = new Date(b).getTime() - new Date(a).getTime();
@@ -20,6 +24,7 @@ function formatDuration(a: string, b: string): string {
 
 export default function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
 
   const { data: run, isLoading: runLoading } = useQuery({
     queryKey: ["run", id],
@@ -48,6 +53,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
   const [selectedSpanId, setSelectedSpanId] = useState<string | null>(null);
   const selectedSpan = selectedSpanId ? spans.find((s) => s.id === selectedSpanId) ?? null : null;
+
+  const [replayOpen, setReplayOpen] = useState(false);
+  const [diffPickerOpen, setDiffPickerOpen] = useState(false);
 
   const isLoading = runLoading || spansLoading;
 
@@ -93,6 +101,15 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                 {connected ? "● Live" : "Running"}
               </Badge>
             )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setReplayOpen(true)}>
+                Replay
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setDiffPickerOpen(true)}>
+                Diff
+              </Button>
+            </div>
           </>
         ) : null}
       </div>
@@ -130,6 +147,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           )}
         </div>
       )}
+
+      <ReplayDialog runId={id} open={replayOpen} onOpenChange={setReplayOpen} />
+      <DiffRunPickerDialog
+        currentRunId={id}
+        open={diffPickerOpen}
+        onOpenChange={setDiffPickerOpen}
+        onSelect={(compareId) => router.push(`/runs/${id}/diff/${compareId}`)}
+      />
     </div>
   );
 }
