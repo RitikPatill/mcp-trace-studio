@@ -8,3 +8,8 @@ servers:
     command: python
     args: ["tests/fixtures/fake_server.py"]
     env: {}
+
+  search:
+    command: python
+    args: ["../examples/search_server.py"]
+    env: {}

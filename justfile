@@ -11,6 +11,7 @@ default:
     @echo "  just dev       Print quickstart instructions"
     @echo "  just test      Run backend tests"
     @echo "  just lint      Lint and format backend code"
+    @echo "  just demo      Populate DB with example traces"
 
 # Start the FastAPI backend in reload mode
 backend:
@@ -39,3 +40,16 @@ test:
 lint:
     cd backend && uv run ruff check . --fix
     cd backend && uv run ruff format .
+
+# Run both example agents to populate the trace DB with realistic demo data.
+# The backend does NOT need to be running — agents write directly to SQLite.
+# After this completes, start the backend and open http://localhost:3000
+demo:
+    @echo "=== MCP Trace Studio — demo traces ==="
+    @echo "Running filesystem research agent…"
+    cd backend && uv run python ../examples/filesystem_agent.py ..
+    @echo "Running web-search agent…"
+    cd backend && uv run python ../examples/search_agent.py "MCP observability"
+    @echo ""
+    @echo "Done. Start the backend then open http://localhost:3000"
+    @echo "  just backend"

@@ -23,20 +23,20 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M6)
+## What works now (M7)
 
-Replay and diff are live. Click **Replay** on any run detail page to re-execute its tool calls against a chosen server and watch the new run fill in live. Click **Diff** to pick a second run and view a side-by-side table of tool calls, with expandable JSON line diffs and latency-delta badges.
+Two self-contained example agents in `examples/` populate the dashboard with realistic demo traces. Run `just demo` to execute both agents and then open the dashboard to explore the recorded tool calls.
 
 | Component | State |
 |-----------|-------|
 | `backend/` — FastAPI app, `/health` endpoint, pydantic-settings | running |
-| `backend/tests/` — API tests (health, proxy, store, API, replay, diff) | passing |
+| `backend/tests/` — API tests (health, proxy, store, API, replay, diff, example agents) | passing |
 | `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui (badge, button, card, separator, skeleton, dialog) | dev server starts |
-| `justfile` — `backend`, `frontend`, `dev`, `test`, `lint` recipes | working |
+| `justfile` — `backend`, `frontend`, `dev`, `test`, `lint`, `demo` recipes | working |
 | Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
 | MIT LICENSE, `.gitignore` | present |
 | **`backend/app/proxy/`** — transparent MCP stdio proxy (`MCPProxy`) | **done** |
-| **`backend/servers.yaml`** — upstream server registry | **done** |
+| **`backend/servers.yaml`** — upstream server registry (`filesystem`, `fake`, `search`) | **done** |
 | **`backend/app/models.py`** — SQLModel tables: `Run` (with `parent_run_id`), `Span`, `ToolCall` | **done** |
 | **`backend/app/database.py`** — SQLite engine (WAL mode), `init_db`, `get_session` | **done** |
 | **`backend/app/store.py`** — store helpers + `FrameRecorder` + `get_tool_calls_for_run` | **done** |
@@ -56,6 +56,9 @@ Replay and diff are live. Click **Replay** on any run detail page to re-execute 
 | **`frontend/src/components/diff/JsonLineDiff.tsx`** — line-by-line JSON diff (green/red) using `diff` package | **done** |
 | **`frontend/src/lib/utils.ts`** — `djb2`, `serverColor`, `serverBarColor` helpers | **done** |
 | **`frontend/src/lib/api.ts`** — typed fetch client (`replayRun`, `getDiff`, etc.) | **done** |
+| **`examples/filesystem_agent.py`** — filesystem research agent (list_directory → read_file → TODO scan) | **done** |
+| **`examples/search_server.py`** — toy local MCP search server (in-memory knowledge base, 3 tools) | **done** |
+| **`examples/search_agent.py`** — web-search demo agent (get_topics → search → fetch_page) | **done** |
 
 ### Using the proxy
 
@@ -156,7 +159,26 @@ Starts Next.js dev server on <http://localhost:3000>.
 
 > **Note:** `just dev` prints this same instruction. Background-process parallelism on Windows requires two terminals for now.
 
-### Demo flow
+### Quick demo
+
+Populate the dashboard with realistic traces in one command (no backend needed first — agents write directly to SQLite):
+
+```bash
+just demo
+```
+
+Then start the backend and frontend:
+
+```bash
+just backend   # Terminal 1
+just frontend  # Terminal 2
+```
+
+Open <http://localhost:3000> and explore the two recorded runs:
+- **filesystem** — `list_directory` → `read_file` × N → TODO scan summary
+- **search** — `get_topics` → `search` → `fetch_page` × N → research brief
+
+### Full demo flow
 
 1. `just backend` + `just frontend` in two terminals.
 2. Confirm the backend is healthy: <http://localhost:8000/health>.
@@ -210,6 +232,7 @@ cd frontend && pnpm prettier --write .
 | M4 — Dashboard UI | done |
 | M5 — trace timeline UI | done |
 | M6 — Replay + Diff | done |
+| M7 — example agents (`just demo`) | done |
 
 ---
 
