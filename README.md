@@ -4,7 +4,15 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Dashboard](docs/screenshot-placeholder.png)
+![Dashboard](docs/screenshot.png)
+
+---
+
+## Demo
+
+![Demo recording](docs/demo.gif)
+
+> Regenerate with `bash scripts/record_demo.sh` (requires `vhs` or `asciinema`+`ffmpeg`).
 
 ---
 
@@ -23,16 +31,18 @@ MCP Trace Studio is a transparent debugging stack for agents that talk to [Model
 
 ---
 
-## What works now (M7)
+## What works now (M8)
 
 Two self-contained example agents in `examples/` populate the dashboard with realistic demo traces. Run `just demo` to execute both agents and then open the dashboard to explore the recorded tool calls.
+
+The end-to-end recording story is now automated: `just record` starts both services, populates the DB, captures a Playwright screenshot of the waterfall timeline, and produces a `docs/demo.gif` via `vhs` or `asciinema`+`agg`.
 
 | Component | State |
 |-----------|-------|
 | `backend/` — FastAPI app, `/health` endpoint, pydantic-settings | running |
 | `backend/tests/` — API tests (health, proxy, store, API, replay, diff, example agents) | passing |
 | `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui (badge, button, card, separator, skeleton, dialog) | dev server starts |
-| `justfile` — `backend`, `frontend`, `dev`, `test`, `lint`, `demo` recipes | working |
+| `justfile` — `backend`, `frontend`, `dev`, `test`, `lint`, `demo`, `screenshot`, `record` recipes | working |
 | Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
 | MIT LICENSE, `.gitignore` | present |
 | **`backend/app/proxy/`** — transparent MCP stdio proxy (`MCPProxy`) | **done** |
@@ -59,6 +69,11 @@ Two self-contained example agents in `examples/` populate the dashboard with rea
 | **`examples/filesystem_agent.py`** — filesystem research agent (list_directory → read_file → TODO scan) | **done** |
 | **`examples/search_server.py`** — toy local MCP search server (in-memory knowledge base, 3 tools) | **done** |
 | **`examples/search_agent.py`** — web-search demo agent (get_topics → search → fetch_page) | **done** |
+| **`scripts/record_demo.sh`** — full recording orchestrator: start services, populate DB, capture screenshot + GIF | **done** |
+| **`scripts/screenshot.py`** — Playwright script; navigates to the waterfall timeline and saves `docs/screenshot.png` | **done** |
+| **`scripts/demo.tape`** — `vhs` tape file for reproducible GIF recording | **done** |
+| **`docs/screenshot.png`** — waterfall timeline screenshot (regenerate with `just screenshot`) | **done** |
+| **`docs/demo.gif`** — terminal recording GIF (regenerate with `just record`) | **done** |
 
 ### Using the proxy
 
@@ -233,6 +248,7 @@ cd frontend && pnpm prettier --write .
 | M5 — trace timeline UI | done |
 | M6 — Replay + Diff | done |
 | M7 — example agents (`just demo`) | done |
+| M8 — demo + screenshots | done |
 
 ---
 
