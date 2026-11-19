@@ -62,7 +62,7 @@ export function WaterfallTimeline({ spans, runStartedAt, serverName, selectedSpa
   const ROW_H = 36;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div data-testid="waterfall-timeline" className="flex min-h-0 flex-1 flex-col">
       {/* Zoom controls */}
       <div className="flex items-center justify-end gap-1 px-3 py-1">
         <span className="text-xs text-muted-foreground mr-2">Zoom: {zoom.toFixed(1)}×</span>

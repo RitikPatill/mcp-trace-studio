@@ -19,6 +19,7 @@ function RunRow({ run }: { run: RunSummary }) {
   return (
     <Link
       href={`/runs/${run.id}`}
+      data-testid="run-row"
       className="flex items-center gap-4 rounded-md border border-border px-4 py-3 transition-colors hover:bg-accent"
     >
       <div className="w-20 flex-shrink-0">

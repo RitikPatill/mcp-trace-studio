@@ -53,3 +53,11 @@ demo:
     @echo ""
     @echo "Done. Start the backend then open http://localhost:3000"
     @echo "  just backend"
+
+# Capture docs/screenshot.png (requires running backend+frontend and `just demo`)
+screenshot:
+    cd backend && uv run python ../scripts/screenshot.py
+
+# Full demo recording: start services, capture screenshot + GIF
+record:
+    bash scripts/record_demo.sh
