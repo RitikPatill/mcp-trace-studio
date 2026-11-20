@@ -1,257 +1,104 @@
 # MCP Trace Studio
 
-> **Local-first observability for MCP agents** — capture, inspect, replay, and diff every tool call your agent makes.
+> Local-first observability dashboard that proxies MCP traffic, captures agent tool calls as traces, and lets you replay and diff runs — Chrome DevTools for AI agents.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-![Dashboard](docs/screenshot.png)
-
----
-
-## Demo
-
-![Demo recording](docs/demo.gif)
-
-> Regenerate with `bash scripts/record_demo.sh` (requires `vhs` or `asciinema`+`ffmpeg`).
-
----
+![demo](docs/demo.gif)
 
 ## What it is
 
-MCP Trace Studio is a transparent debugging stack for agents that talk to [Model Context Protocol](https://modelcontextprotocol.io/) servers. It sits between your agent client and your MCP servers, records every JSON-RPC frame as a structured span, and renders the resulting traces the way Chrome DevTools renders a page load.
+Debugging MCP agents today means reading raw stdout and sprinkling `print()` statements. MCP Trace Studio fixes that: a transparent Python proxy sits between your agent and your MCP servers, records every JSON-RPC frame as a structured span, and renders the results the way Chrome DevTools renders a network waterfall — live, zoomable, clickable. The entire stack runs offline against SQLite; no data leaves your machine, no cloud account required.
 
-**Target capabilities**
+The proxy speaks both stdio and SSE/HTTP transports and requires zero changes to your agent. A FastAPI backend stores runs as `run → span → tool_call` with timing, arguments, results, and errors. The Next.js dashboard adds a **Replay** view — rerun a captured trace against a different model or server — and a **Diff** view that aligns two runs side-by-side and highlights argument changes, output changes, and latency deltas.
 
-- **Transparent proxy** — stdio and SSE/HTTP transports, zero agent-side changes required.
-- **Live waterfall timeline** — watch tool calls appear in real time as the agent runs.
-- **Span detail view** — inspect raw args and return values in a collapsible JSON tree.
-- **Replay** — rerun a captured trace against a different model or server config and compare latency.
-- **Diff** — place two runs side-by-side to see which arguments, outputs, or latencies changed.
-- **Fully offline** — SQLite backend, no cloud dependency, your traces never leave your machine.
+## Quickstart
 
----
-
-## What works now (M8)
-
-Two self-contained example agents in `examples/` populate the dashboard with realistic demo traces. Run `just demo` to execute both agents and then open the dashboard to explore the recorded tool calls.
-
-The end-to-end recording story is now automated: `just record` starts both services, populates the DB, captures a Playwright screenshot of the waterfall timeline, and produces a `docs/demo.gif` via `vhs` or `asciinema`+`agg`.
-
-| Component | State |
-|-----------|-------|
-| `backend/` — FastAPI app, `/health` endpoint, pydantic-settings | running |
-| `backend/tests/` — API tests (health, proxy, store, API, replay, diff, example agents) | passing |
-| `frontend/` — Next.js 15, TypeScript, Tailwind v4, shadcn/ui (badge, button, card, separator, skeleton, dialog) | dev server starts |
-| `justfile` — `backend`, `frontend`, `dev`, `test`, `lint`, `demo`, `screenshot`, `record` recipes | working |
-| Pre-commit hooks — ruff (Python) + Prettier (TS/frontend) | configured |
-| MIT LICENSE, `.gitignore` | present |
-| **`backend/app/proxy/`** — transparent MCP stdio proxy (`MCPProxy`) | **done** |
-| **`backend/servers.yaml`** — upstream server registry (`filesystem`, `fake`, `search`) | **done** |
-| **`backend/app/models.py`** — SQLModel tables: `Run` (with `parent_run_id`), `Span`, `ToolCall` | **done** |
-| **`backend/app/database.py`** — SQLite engine (WAL mode), `init_db`, `get_session` | **done** |
-| **`backend/app/store.py`** — store helpers + `FrameRecorder` + `get_tool_calls_for_run` | **done** |
-| **`backend/app/api/runs.py`** — `GET /runs`, `GET /runs/{id}`, `GET /runs/{id}/spans`, `POST /runs/{id}/replay`, `GET /runs/{a}/diff/{b}`, `WS /ws/runs/{id}` | **done** |
-| **`backend/app/api/replay.py`** — `execute_replay` background task (MCP stdio client, records spans + tool calls) | **done** |
-| **`frontend/src/app/runs/page.tsx`** — runs list with status badge, duration, tool count, server chip | **done** |
-| **`frontend/src/app/runs/[id]/page.tsx`** — run detail page: header with Replay/Diff buttons, waterfall, side panel | **done** |
-| **`frontend/src/app/runs/[id]/diff/[compareId]/page.tsx`** — diff page: two RunCards + DiffTable | **done** |
-| **`frontend/src/hooks/useRunWebSocket.ts`** — WebSocket hook; streams new spans live | **done** |
-| **`frontend/src/components/timeline/WaterfallTimeline.tsx`** — zoomable waterfall | **done** |
-| **`frontend/src/components/timeline/SpanDetailPanel.tsx`** — span metadata, JSON trees | **done** |
-| **`frontend/src/components/timeline/LatencySparkline.tsx`** — SVG bar sparkline | **done** |
-| **`frontend/src/components/timeline/JsonDisplay.tsx`** — syntax-highlighted collapsible JSON | **done** |
-| **`frontend/src/components/replay/ReplayDialog.tsx`** — modal to pick server + model, fires replay | **done** |
-| **`frontend/src/components/replay/DiffRunPickerDialog.tsx`** — modal run list picker for diff | **done** |
-| **`frontend/src/components/diff/DiffTable.tsx`** — aligned tool call table with expand-to-diff | **done** |
-| **`frontend/src/components/diff/JsonLineDiff.tsx`** — line-by-line JSON diff (green/red) using `diff` package | **done** |
-| **`frontend/src/lib/utils.ts`** — `djb2`, `serverColor`, `serverBarColor` helpers | **done** |
-| **`frontend/src/lib/api.ts`** — typed fetch client (`replayRun`, `getDiff`, etc.) | **done** |
-| **`examples/filesystem_agent.py`** — filesystem research agent (list_directory → read_file → TODO scan) | **done** |
-| **`examples/search_server.py`** — toy local MCP search server (in-memory knowledge base, 3 tools) | **done** |
-| **`examples/search_agent.py`** — web-search demo agent (get_topics → search → fetch_page) | **done** |
-| **`scripts/record_demo.sh`** — full recording orchestrator: start services, populate DB, capture screenshot + GIF | **done** |
-| **`scripts/screenshot.py`** — Playwright script; navigates to the waterfall timeline and saves `docs/screenshot.png` | **done** |
-| **`scripts/demo.tape`** — `vhs` tape file for reproducible GIF recording | **done** |
-| **`docs/screenshot.png`** — waterfall timeline screenshot (regenerate with `just screenshot`) | **done** |
-| **`docs/demo.gif`** — terminal recording GIF (regenerate with `just record`) | **done** |
-
-### Using the proxy
-
-Point your MCP client at the proxy instead of a real server:
+**Prerequisites:** [uv](https://docs.astral.sh/uv/) ≥ 0.5, [pnpm](https://pnpm.io/) ≥ 9, [just](https://just.systems/) ≥ 1.36, Python ≥ 3.11, Node.js ≥ 20.
 
 ```bash
-# Forward all traffic to the 'filesystem' server defined in servers.yaml
-cd backend
-uv run python -m app.proxy filesystem
+git clone https://github.com/RitikPatill/mcp-trace-studio.git
+cd mcp-trace-studio
+cd backend && uv sync && cd ..
+cd frontend && pnpm install && cd ..
+just demo                # populate SQLite with two example agent runs
 ```
 
-Every JSON-RPC frame is logged as a JSON-lines record to stderr **and written to SQLite** as a structured span. `tools/call` frames are correlated with their responses to produce timed `ToolCall` rows.
-
-### REST API
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /runs` | List all runs, most recent first |
-| `GET /runs/{id}` | Get a single run (404 if not found) |
-| `GET /runs/{id}/spans` | All spans for a run, with nested tool calls |
-| `POST /runs/{id}/replay` | Re-execute captured tool calls; returns new run (202) |
-| `GET /runs/{a}/diff/{b}` | Align tool calls across two runs, return diff entries |
-| `WS /ws/runs/{id}` | Live stream of new spans (polls every 500 ms) |
+Then open two terminals:
 
 ```bash
+# Terminal 1
+just backend             # FastAPI on http://localhost:8000
+
+# Terminal 2
+just frontend            # Next.js on http://localhost:3000
+```
+
+Open <http://localhost:3000> and you will land on the Runs list with the demo traces already loaded.
+
+## Usage
+
+After `just demo`, the dashboard shows two runs: a filesystem research agent and a web-search agent. Click any run row to open the waterfall timeline. Click a span bar to inspect the raw JSON args and return value. Use the **Replay** button to rerun the trace against a different server config and watch new spans stream in live. Use the **Diff** button to compare any two runs and see which tool arguments changed, which outputs changed, and by how much latency shifted.
+
+To trace your own agent, point it at the proxy instead of your real MCP server:
+
+```bash
+cd backend && uv run python -m app.proxy filesystem
+```
+
+Add server definitions to `backend/servers.yaml`. The proxy forwards faithfully and writes every frame to SQLite as a structured span.
+
+```bash
+# one API call example
 curl http://localhost:8000/runs
-curl http://localhost:8000/runs/<run-id>/spans
 curl -X POST http://localhost:8000/runs/<run-id>/replay \
      -H 'Content-Type: application/json' \
      -d '{"server_name": "filesystem"}'
-curl http://localhost:8000/runs/<run-a>/diff/<run-b>
 ```
-
-> **SQLite migration note:** `parent_run_id` is a new nullable column on `Run`. If you have an existing `traces.db` from M5 or earlier, run:
-> ```bash
-> sqlite3 backend/traces.db "ALTER TABLE run ADD COLUMN parent_run_id TEXT;"
-> ```
-> Or delete `traces.db` for a clean start. Tests use in-memory DBs and are unaffected.
-
----
 
 ## Architecture
 
 ```
-           ┌────────────────┐
-           │  Agent client  │  (Claude Desktop / local CLI)
-           └───────┬────────┘
-                   │ MCP (stdio/SSE)
-           ┌───────▼────────┐
-           │   MCP Proxy    │  ◀── Python, mcp-sdk
-           │  (interceptor) │
-           └───┬─────────┬──┘
-               │         │ forwards
-   writes spans│         ▼
-               │   ┌─────────────┐
-               │   │ Real MCP    │  (filesystem, web, …)
-               │   │  servers    │
-               │   └─────────────┘
-               ▼
-       ┌───────────────┐       ┌──────────────────┐
-       │  FastAPI +    │◀──────│  Next.js UI      │
-       │   SQLite      │  REST │  Timeline/Diff   │
-       │   (SQLModel)  │  WS   │  Replay console  │
-       └───────────────┘       └──────────────────┘
+Agent (Claude Desktop / CLI)
+        │  MCP stdio / SSE
+        ▼
+   MCP Proxy ──writes spans──▶  FastAPI + SQLite
+  (Python · mcp-sdk)               (SQLModel)
+        │                               │
+        │  forwards                     │  REST / WebSocket
+        ▼                               ▼
+ Real MCP Servers               Next.js Dashboard
+ (filesystem, search…)         (Timeline · Diff · Replay)
 ```
 
----
+## Project structure
 
-## Quickstart
-
-### Prerequisites
-
-| Tool | Version |
-|------|---------|
-| [uv](https://docs.astral.sh/uv/) | ≥ 0.5 |
-| [pnpm](https://pnpm.io/) | ≥ 9 |
-| [just](https://just.systems/) | ≥ 1.36 |
-| Python | ≥ 3.11 |
-| Node.js | ≥ 20 |
-
-### Run (two terminals)
-
-**Terminal 1 — backend**
-
-```bash
-just backend
+```
+mcp-trace-studio/
+├── backend/          Python package — FastAPI app, proxy, SQLModel store
+│   ├── app/          Application modules: api, proxy, models, store, settings
+│   ├── tests/        pytest suite covering proxy, API, diff, replay, agents
+│   └── servers.yaml  MCP server definitions consumed by proxy and replay
+├── frontend/         Next.js 15 dashboard (TypeScript, Tailwind, shadcn/ui)
+│   └── src/          Pages, components, hooks, API client
+├── examples/         Two runnable demo agents (filesystem + web-search)
+├── docs/             Screenshot and demo GIF
+├── scripts/          Screenshot capture and demo recording helpers
+└── justfile          Task runner: backend / frontend / test / lint / demo
 ```
 
-Starts FastAPI on <http://localhost:8000>. Health check: <http://localhost:8000/health>.
+## Roadmap
 
-**Terminal 2 — frontend**
-
-```bash
-just frontend
-```
-
-Starts Next.js dev server on <http://localhost:3000>.
-
-> **Note:** `just dev` prints this same instruction. Background-process parallelism on Windows requires two terminals for now.
-
-### Quick demo
-
-Populate the dashboard with realistic traces in one command (no backend needed first — agents write directly to SQLite):
-
-```bash
-just demo
-```
-
-Then start the backend and frontend:
-
-```bash
-just backend   # Terminal 1
-just frontend  # Terminal 2
-```
-
-Open <http://localhost:3000> and explore the two recorded runs:
-- **filesystem** — `list_directory` → `read_file` × N → TODO scan summary
-- **search** — `get_topics` → `search` → `fetch_page` × N → research brief
-
-### Full demo flow
-
-1. `just backend` + `just frontend` in two terminals.
-2. Confirm the backend is healthy: <http://localhost:8000/health>.
-3. Open <http://localhost:3000> — you are redirected to the **Runs** page.
-4. Run the proxy against an MCP server; runs appear live (5-second poll).
-5. Click a run row to open the waterfall timeline; click any span bar to inspect args/result JSON.
-6. On the run detail page, click **Replay** to pick a server and model, then watch the new run fill in live via WebSocket.
-7. Click **Diff** on either run, pick a second run to compare, and view the aligned tool-call table with JSON line diffs and latency-delta badges.
-8. Toggle dark/light theme with the button at the bottom of the sidebar.
-
----
-
-## Development
-
-```bash
-# Install backend deps
-cd backend && uv sync
-
-# Install frontend deps
-cd frontend && pnpm install
-```
-
-The `justfile` wraps the common tasks:
-
-```bash
-just test   # uv run pytest -v
-just lint   # ruff check + ruff format (backend)
-```
-
-Manual equivalents:
-
-```bash
-# Backend tests
-cd backend && uv run pytest -v
-
-# Lint / format
-cd backend && uv run ruff check . --fix
-cd backend && uv run ruff format .
-cd frontend && pnpm prettier --write .
-```
-
----
-
-## Project status
-
-| Milestone | Status |
-|-----------|--------|
-| M1 — scaffold + readme | done |
-| M2 — MCP proxy core (stdio, frame logging, pytest suite) | done |
-| M3 — trace storage + REST/WebSocket API | done |
-| M4 — Dashboard UI | done |
-| M5 — trace timeline UI | done |
-| M6 — Replay + Diff | done |
-| M7 — example agents (`just demo`) | done |
-| M8 — demo + screenshots | done |
-
----
+- [ ] OpenTelemetry export — emit spans via OTLP HTTP to Jaeger, Tempo, or Grafana Cloud while keeping SQLite as the local store.
+- [ ] Langfuse bridge — post completed runs to Langfuse as observations for teams already using it for LLM cost tracking.
+- [ ] OpenAI function-calling adapter — map `tool_calls` in chat completion responses to the same schema so non-MCP agents appear in the diff view.
+- [ ] Multi-user mode — JWT auth, per-user run isolation, and a PostgreSQL backend option for shared team deployments.
 
 ## License
 
-MIT © 2026 Ritik
+MIT — see LICENSE.
+
+---
+
+Built autonomously by [autodev](https://github.com/RitikPatill/autodev),
+a multi-agent orchestrator I designed. Each commit in this repo was
+authored by me; the implementation work was performed by Sonnet under
+the orchestrator's control. Read the orchestrator's README to see how.
